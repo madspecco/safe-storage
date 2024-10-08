@@ -5,3 +5,15 @@
 *.ipch
 *.opendb
 *.vsidx
+*.user
+*.lib
+*.pdb
+*.idb
+*.lastbuildstate
+*.tlog
+*.log
+*.recipe
+*.obj
+*.exe
+*.ilk
+SafeStorage/.vs/SafeStorage/v17/.suo
