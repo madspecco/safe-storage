@@ -11,7 +11,7 @@
  * @param       usernameLength The length of the username.
  * @return      TRUE if the username is valid; otherwise, FALSE.
  */
-bool isValidUsername(_In_reads_(usernameLength) const char* username, _In_ uint16_t usernameLength) {
+bool isValidUsername(_In_reads_ (usernameLength) const char* username, _In_ uint16_t usernameLength) {
     // Check length
     if (usernameLength < 5 || usernameLength > 10) {
         return false;
@@ -35,14 +35,40 @@ bool isValidUsername(_In_reads_(usernameLength) const char* username, _In_ uint1
  * @param       passwordLength  The length of the password.
  * @return      TRUE if the password is valid; otherwise, FALSE.
  */
-bool isValidPassword(_In_reads_(passwordLength) const char* password, _In_ uint16_t passwordLength)
+bool isValidPassword(_In_reads_ (passwordLength) const char* password, _In_ uint16_t passwordLength)
 {
-    // Prevent warnings/errors until implementation
-    UNREFERENCED_PARAMETER(password);
-    UNREFERENCED_PARAMETER(passwordLength);
+    // Check length
+    if (passwordLength < 5) {
+        return false;
+    }
 
-    // Implement later
-    return true;  // Temporary return value
+    // Variables for checking password requirements
+    bool hasDigit = false;
+    bool hasLower = false;
+    bool hasUpper = false;
+    bool hasSpecial = false;
+
+    // Check content of the password
+    for (uint16_t i = 0; i < passwordLength; i++) {
+        if (isdigit(password[i])) {
+            hasDigit = true;
+        }
+
+        else if (islower(password[i])) {
+            hasLower = true;
+        }
+
+        else if (isupper(password[i])) {
+            hasUpper = true;
+        }
+
+        else if (strchr("!@#$%^&", password[i])) {
+            hasSpecial = true;
+        }
+    }
+
+    // Password meets all requirements
+    return hasDigit && hasLower && hasUpper && hasSpecial;
 }
 
 
