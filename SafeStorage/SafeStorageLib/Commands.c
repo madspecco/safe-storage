@@ -1,6 +1,7 @@
 ﻿#include "Commands.h"
 #include <stdbool.h>
-
+#include <strsafe.h>
+#include <errno.h>
 
 #define MAX_USERNAME_LENGTH 10
 
@@ -75,6 +76,35 @@ bool isValidPassword(_In_reads_ (passwordLength) const char* password, _In_ uint
 
 
 /**
+ * @brief       Stores the user's credentials (username and hashed password) in the users.txt file.
+ *
+ * @param       username        The username to be stored.
+ * @param       hashedPassword  The hashed password to be stored.
+ * @return      TRUE if the credentials are stored successfully; otherwise, FALSE.
+ */
+bool StoreUserCredentials(_In_z_ const char* username, _In_reads_bytes_(HASH_LENGTH) const char* password) {
+    char AppDir[MAX_PATH];
+    GetCurrentDirectoryA(MAX_PATH, AppDir);
+
+    // Construct the path to the users.txt file
+    char usersFilePath[MAX_PATH];
+    sprintf_s(usersFilePath, MAX_PATH, "%s\\users.txt", AppDir);
+
+    // Open users.txt for appending
+    FILE* file = fopen(usersFilePath, "a");
+    if (file == NULL) {
+        printf("Error opening file for writing: %s\n", strerror(errno));
+        return false;
+    }
+    
+    // Write username and hashed password
+    fprintf(file, "%s %s\n", username, password);
+
+    fclose(file);
+    return true;
+}
+
+/**
  * @brief       Checks if a user is already registered by checking the users.txt file.
  *
  * @param       username        The username to be checked.
@@ -86,7 +116,7 @@ bool UserAlreadyRegistered(_In_ const char* username) {
 
     // Construct the path to the users.txt file.
     char usersFilePath[MAX_PATH];
-    sprintf_s(usersFilePath, MAX_PATH, "%s\\users.txt\\", AppDir);
+    sprintf_s(usersFilePath, MAX_PATH, "%s\\users.txt", AppDir);
 
     // Open users.txt file for reading.
     FILE* file = fopen(usersFilePath, "r");
@@ -150,25 +180,44 @@ SafeStorageHandleRegister(
 
     // Validate username
     if (!isValidUsername(Username, UsernameLength)) {
+        printf("Invalid Username\n");
         return STATUS_INVALID_PARAMETER;
     }
 
     // Validate password
     if (!isValidPassword(Password, PasswordLength)) {
+        printf("Invalid Password\n");
         return STATUS_INVALID_PARAMETER;
     }
 
     // Check if the username already exists in users.txt
     if (UserAlreadyRegistered(Username)) {
+        printf("User already exists\n");
         return STATUS_USER_EXISTS;
     }
 
     // Create user directory
-    //char userDirectory[MAX_PATH];
-    //sprintf(userDirectory, "%s\\users\\%s", AppDir, Username);
-    //if (!CreateDirectoryA(userDirectory, NULL)) {
-    //    return STATUS_CANNOT_CREATE_DIRECTORY;
-    //}
+    char userDirectory[MAX_PATH];
+    sprintf(userDirectory, "%s\\users\\%s", AppDir, Username);
+
+    // Check if parent directory exists
+    char usersDir[MAX_PATH];
+    sprintf(usersDir, "%s\\users", AppDir);
+    if (!CreateDirectoryA(usersDir, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
+        printf("Error creating users directory: %s\n", strerror(errno));
+        return SS_STATUS_MEMORY_ALLOCATION_FAILED;
+    }
+
+    if (!CreateDirectoryA(userDirectory, NULL)) {
+        DWORD dwError = GetLastError();
+        if (dwError == ERROR_ALREADY_EXISTS) {
+            printf("Directory already exists\n");
+        }
+        else {
+            printf("Error creating directory: %s\n", strerror(dwError));
+        }
+        return SS_STATUS_MEMORY_ALLOCATION_FAILED;
+    }
 
     // Hash the password
     /*char hashedPassword[HASH_LENGTH];
@@ -177,11 +226,12 @@ SafeStorageHandleRegister(
     }*/
 
     // Store the username and hashed password in users.txt
-    //if (!StoreUserCredentials(Username, hashedPassword)) {
-    //    return STATUS_CANNOT_WRITE_FILE;
-    //}
+    if (!StoreUserCredentials(Username, Password)) {
+        printf("Failed to store user credentials\n");
+        return SS_STATUS_MEMORY_ALLOCATION_FAILED;
+    }
 
-    return STATUS_SUCCESS;
+    return SS_STATUS_SUCCESS;
 }
 
 
