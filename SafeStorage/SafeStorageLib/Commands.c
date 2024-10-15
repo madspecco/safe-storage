@@ -2,6 +2,8 @@
 #include <stdbool.h>
 
 
+#define MAX_USERNAME_LENGTH 10
+
 // Function declarations
 
 /**
@@ -72,6 +74,45 @@ bool isValidPassword(_In_reads_ (passwordLength) const char* password, _In_ uint
 }
 
 
+/**
+ * @brief       Checks if a user is already registered by checking the users.txt file.
+ *
+ * @param       username        The username to be checked.
+ * @return      TRUE if the user is already registerd; otherwise, FALSE.
+ */
+bool UserAlreadyRegistered(_In_ const char* username) {
+    char AppDir[MAX_PATH];
+    GetCurrentDirectoryA(MAX_PATH, AppDir);
+
+    // Construct the path to the users.txt file.
+    char usersFilePath[MAX_PATH];
+    sprintf_s(usersFilePath, MAX_PATH, "%s\\users.txt\\", AppDir);
+
+    // Open users.txt file for reading.
+    FILE* file = fopen(usersFilePath, "r");
+    if (file == NULL) {
+        // Handle error
+        return false;   // user not registered if the file does not exist.
+    }
+    
+    char line[MAX_USERNAME_LENGTH + 1]; // Buffer to hold each line of the file
+    // Read lines and check for the username
+    while (fgets(line, sizeof(line), file)) {
+        // Remove newline character from the line if present
+        line[strcspn(line, "\n")] = 0;
+
+        // Compare the line with provided username
+        if (strcmp(line, username) == 0) {
+            fclose(file);
+            return true;    // User is registered
+        }
+    }
+
+    fclose(file);
+    return false;   // User found, already registered
+}
+
+
 NTSTATUS WINAPI
 SafeStorageInit(
     VOID
@@ -118,9 +159,9 @@ SafeStorageHandleRegister(
     }
 
     // Check if the username already exists in users.txt
-    //if (UserAlreadyRegistered(Username)) {
-    //    return STATUS_USER_EXISTS;
-    //}
+    if (UserAlreadyRegistered(Username)) {
+        return STATUS_USER_EXISTS;
+    }
 
     // Create user directory
     //char userDirectory[MAX_PATH];
