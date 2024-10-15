@@ -8,16 +8,17 @@ EXTERN_C_START;
 
 // Status codes
 typedef enum {
-    SS_STATUS_SUCCESS = 0,                  // Operation was successful
-    SS_STATUS_USER_ALREADY_EXISTS = 1,      // User already exists
-    SS_STATUS_INVALID_USERNAME = 2,         // Username is invalid
-    SS_STATUS_INVALID_PASSWORD = 3,         // Password is invalid
-    SS_STATUS_USER_NOT_FOUND = 4,           // User not found
-    SS_STATUS_LOGIN_FAILED = 5,             // Login failed due to incorrect password
-    SS_STATUS_NOT_LOGGED_IN = 6,            // No user is currently logged in
-    SS_STATUS_FILE_NOT_FOUND = 7,           // Specified file not found
-    SS_STATUS_MEMORY_ALLOCATION_FAILED = 8, // Memory allocation failed
-    SS_STATUS_UNKNOWN_ERROR = 9             // An unknown error occurred
+    SS_STATUS_SUCCESS = 0,                      // Operation was successful
+    SS_STATUS_USER_ALREADY_EXISTS = 1,          // User already exists
+    SS_STATUS_INVALID_USERNAME = 2,             // Username is invalid
+    SS_STATUS_INVALID_PASSWORD = 3,             // Password is invalid
+    SS_STATUS_USER_NOT_FOUND = 4,               // User not found
+    SS_STATUS_LOGIN_FAILED = 5,                 // Login failed due to incorrect password
+    SS_STATUS_NOT_LOGGED_IN = 6,                // No user is currently logged in
+    SS_STATUS_FILE_NOT_FOUND = 7,               // Specified file not found
+    SS_STATUS_MEMORY_ALLOCATION_FAILED = 8,     // Memory allocation failed
+    SS_STATUS_HASH_FAILED = 9,                  // Hashing failed
+    SS_STATUS_UNKNOWN_ERROR = 10                // An unknown error occurred
 } SafeStorageStatus;
 
 
