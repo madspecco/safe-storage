@@ -3,12 +3,13 @@
 #include <strsafe.h>
 #include <errno.h>
 
-#define MAX_USERNAME_LENGTH 10
-#define HASH_LENGTH 32 // 256 bits / 8 bits per byte
+
+// Global static variables
+static bool g_IsUserLoggedIn = false;
+static char g_LoggedInUsername[USERNAME_MAX_LENGTH + 1] = { 0 };
+
 
 // Function declarations
-
-
 /**
  * @brief       Converts a binary hash to a hexadecimal string.
  *
@@ -33,7 +34,7 @@ void ConvertHashToHexString(_In_reads_bytes_(hashLength) const char* hash, _In_ 
  */
 bool isValidUsername(_In_reads_ (usernameLength) const char* username, _In_ uint16_t usernameLength) {
     // Check length
-    if (usernameLength < 5 || usernameLength > 10) {
+    if (usernameLength < USERNAME_MIN_LENGTH || usernameLength > USERNAME_MAX_LENGTH) {
         return false;
     }
 
@@ -58,7 +59,7 @@ bool isValidUsername(_In_reads_ (usernameLength) const char* username, _In_ uint
 bool isValidPassword(_In_reads_ (passwordLength) const char* password, _In_ uint16_t passwordLength)
 {
     // Check length
-    if (passwordLength < 5) {
+    if (passwordLength < PASSWORD_MIN_LENGTH) {
         return false;
     }
 
@@ -177,7 +178,7 @@ bool StoreUserCredentials(_In_z_ const char* username, _In_reads_bytes_(HASH_LEN
     ConvertHashToHexString(hashedPassword, HASH_LENGTH, hexHashedPassword);
     
     // Write username and hashed password
-    fprintf(file, "%s %s\n", username, hexHashedPassword);
+    fprintf(file, "%s:%s\n", username, hexHashedPassword);
 
     fclose(file);
     return true;
@@ -204,7 +205,7 @@ bool UserAlreadyRegistered(_In_ const char* username) {
         return false;   // user not registered if the file does not exist.
     }
     
-    char line[MAX_USERNAME_LENGTH + 1]; // Buffer to hold each line of the file
+    char line[USERNAME_MAX_LENGTH + 1]; // Buffer to hold each line of the file
     // Read lines and check for the username
     while (fgets(line, sizeof(line), file)) {
         // Remove newline character from the line if present
@@ -227,9 +228,9 @@ SafeStorageInit(
     VOID
 )
 {
-    /* The function is not implemented. It is your responsibility. */
     /* Here you can create any global objects you consider necessary. */
-
+    g_IsUserLoggedIn = false;   // Initialize the variable
+    memset(g_LoggedInUsername, 0, sizeof(g_LoggedInUsername));  // Clear the username
     return STATUS_SUCCESS;
 }
 
@@ -314,6 +315,11 @@ SafeStorageHandleRegister(
 }
 
 
+bool IsUserLoggedIn(void) {
+    return g_IsUserLoggedIn;
+}
+
+
 NTSTATUS WINAPI
 SafeStorageHandleLogin(
     const char* Username,
@@ -325,6 +331,44 @@ SafeStorageHandleLogin(
     /* The function is not implemented. It is your responsibility. */
     /* After you implement the function, you can remove UNREFERENCED_PARAMETER(x). */
     /* This is just to prevent a compilation warning that the parameter is unused. */
+
+
+    // Validate username
+    if (!isValidUsername(Username, UsernameLength)) {
+        printf("Invalid Username\n");
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    // Validate password
+    if (!isValidPassword(Password, PasswordLength)) {
+        printf("Invalid Password\n");
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    // Hash the provided password to compare with the stored hash
+    char hashedPassword[HASH_LENGTH];
+    if (!HashPassword(Password, PasswordLength, hashedPassword)) {
+        printf("Failed to hash password\n");
+        return SS_STATUS_HASH_FAILED;
+    }
+
+    // Retrieve stored hashed password for the username
+    char storedHashedPassword[HASH_LENGTH];
+    if (!RetrieveUserCredentials(Username, storedHashedPassword)) {
+        printf("User not found\n");
+        return SS_STATUS_USER_NOT_FOUND;
+    }
+
+    // Compare the hashed passwords
+    if (strcmp(hashedPassword, storedHashedPassword) != 0) {
+        printf("Incorrect password\n");
+        return SS_STATUS_INVALID_PASSWORD;
+    }
+
+    // Login successful
+    g_IsUserLoggedIn = true; // Set logged in state to true
+    strncpy(g_LoggedInUsername, Username, USERNAME_MAX_LENGTH); // Store the username
+
 
     UNREFERENCED_PARAMETER(Username);
     UNREFERENCED_PARAMETER(UsernameLength);

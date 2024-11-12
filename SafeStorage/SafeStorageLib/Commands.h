@@ -18,7 +18,8 @@ typedef enum {
     SS_STATUS_FILE_NOT_FOUND = 7,               // Specified file not found
     SS_STATUS_MEMORY_ALLOCATION_FAILED = 8,     // Memory allocation failed
     SS_STATUS_HASH_FAILED = 9,                  // Hashing failed
-    SS_STATUS_UNKNOWN_ERROR = 10                // An unknown error occurred
+    SS_STATUS_PASSWORD_MISMATCH = 10,           // Password does not match
+    SS_STATUS_UNKNOWN_ERROR = 11                // An unknown error occurred
 } SafeStorageStatus;
 
 
@@ -26,6 +27,7 @@ typedef enum {
 #define USERNAME_MIN_LENGTH 5
 #define USERNAME_MAX_LENGTH 10
 #define PASSWORD_MIN_LENGTH 5
+#define HASH_LENGTH 32          // 256 bits / 8 bits per byte
 
 
 // Special character set for password validation
