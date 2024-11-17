@@ -423,8 +423,6 @@ SafeStorageHandleLogin(
         return SS_STATUS_USER_NOT_FOUND;
     }
 
-    printf("Input hash: %s\nStored hash: %s\n", hashedPassword, storedHashedPassword);
-
 
     // Compare the hashed passwords
     if (strcmp(hashedPassword, storedHashedPassword) != 0) {
@@ -435,6 +433,7 @@ SafeStorageHandleLogin(
     // Login successful
     g_IsUserLoggedIn = true; // Set logged in state to true
     strncpy(g_LoggedInUsername, Username, USERNAME_MAX_LENGTH); // Store the username
+    printf("Welcome, %s!\n", Username);
 
 
     UNREFERENCED_PARAMETER(Username);
