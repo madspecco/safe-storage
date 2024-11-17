@@ -396,6 +396,12 @@ SafeStorageHandleLogin(
     /* After you implement the function, you can remove UNREFERENCED_PARAMETER(x). */
     /* This is just to prevent a compilation warning that the parameter is unused. */
 
+    // Check if a user is already logged in
+    if (g_IsUserLoggedIn) {
+        printf("You are already logged in as %s. Please log out first.\n", g_LoggedInUsername);
+        return SS_STATUS_ALREADY_LOGGED_IN;
+    }
+
 
     // Validate username
     if (!isValidUsername(Username, UsernameLength)) {
@@ -435,13 +441,7 @@ SafeStorageHandleLogin(
     strncpy(g_LoggedInUsername, Username, USERNAME_MAX_LENGTH); // Store the username
     printf("Welcome, %s!\n", Username);
 
-
-    UNREFERENCED_PARAMETER(Username);
-    UNREFERENCED_PARAMETER(UsernameLength);
-    UNREFERENCED_PARAMETER(Password);
-    UNREFERENCED_PARAMETER(PasswordLength);
-
-    return STATUS_NOT_IMPLEMENTED;
+    return SS_STATUS_SUCCESS;
 }
 
 

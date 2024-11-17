@@ -19,7 +19,8 @@ typedef enum {
     SS_STATUS_MEMORY_ALLOCATION_FAILED = 8,     // Memory allocation failed
     SS_STATUS_HASH_FAILED = 9,                  // Hashing failed
     SS_STATUS_PASSWORD_MISMATCH = 10,           // Password does not match
-    SS_STATUS_UNKNOWN_ERROR = 11                // An unknown error occurred
+    SS_STATUS_ALREADY_LOGGED_IN = 11,            // User is already logged in
+    SS_STATUS_UNKNOWN_ERROR = 12                // An unknown error occurred
 } SafeStorageStatus;
 
 
