@@ -450,9 +450,18 @@ SafeStorageHandleLogout(
     VOID
 )
 {
-    /* The function is not implemented. It is your responsibility. */
+    // Check if a user is logged in
+    if (!g_IsUserLoggedIn) {
+        printf("No user is logged in.\n");
+        return SS_STATUS_NOT_LOGGED_IN;
+    }
 
-    return STATUS_NOT_IMPLEMENTED;
+    // Log the user out
+    printf("Goodbye, %s!\n", g_LoggedInUsername);
+    g_IsUserLoggedIn = false; // Set logged-in state to false
+    memset(g_LoggedInUsername, 0, USERNAME_MAX_LENGTH); // Clear the stored username
+
+    return SS_STATUS_SUCCESS;
 }
 
 
