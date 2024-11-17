@@ -164,7 +164,7 @@ cleanup:
  * @param       hashedPassword  The hashed password to be stored.
  * @return      TRUE if the credentials are stored successfully; otherwise, FALSE.
  */
-bool StoreUserCredentials(_In_z_ const char* username, _In_reads_bytes_(HASH_LENGTH) const char* hashedPassword) {
+bool StoreUserCredentials(_In_z_ const char* username, _In_reads_bytes_(HASH_HEX_LENGTH) const char* hashedPassword) {
     char AppDir[MAX_PATH];
     GetCurrentDirectoryA(MAX_PATH, AppDir);
 
@@ -179,12 +179,8 @@ bool StoreUserCredentials(_In_z_ const char* username, _In_reads_bytes_(HASH_LEN
         return false;
     }
 
-    // Convert the binary hash to a hexadecimal string
-    char hexHashedPassword[2 * HASH_LENGTH + 1];
-    ConvertHashToHexString(hashedPassword, HASH_LENGTH, hexHashedPassword);
-    
-    // Write username and hashed password
-    fprintf(file, "%s:%s\n", username, hexHashedPassword);
+    // Write username and hashed password as hex
+    fprintf(file, "%s:%s\n", username, hashedPassword);
 
     fclose(file);
     return true;
@@ -306,7 +302,7 @@ SafeStorageHandleRegister(
     }
 
     // Hash the password
-    char hashedPassword[HASH_LENGTH];
+    char hashedPassword[HASH_HEX_LENGTH] = { 0 };
     if (!HashPassword(Password, PasswordLength, hashedPassword)) {
         return SS_STATUS_HASH_FAILED;
     }
@@ -421,7 +417,7 @@ SafeStorageHandleLogin(
     }
 
     // Retrieve stored hashed password for the username
-    char storedHashedPassword[HASH_LENGTH * 2 + 1] = { 0 };
+    char storedHashedPassword[HASH_HEX_LENGTH] = { 0 };
     if (!RetrieveUserCredentials(Username, storedHashedPassword)) {
         printf("User not found\n");
         return SS_STATUS_USER_NOT_FOUND;
