@@ -27,7 +27,8 @@ typedef enum {
 #define USERNAME_MIN_LENGTH 5
 #define USERNAME_MAX_LENGTH 10
 #define PASSWORD_MIN_LENGTH 5
-#define HASH_LENGTH 32          // 256 bits / 8 bits per byte
+#define HASH_LENGTH 32                          // 256 bits / 8 bits per byte
+#define HASH_HEX_LENGTH (HASH_LENGTH * 2 + 1)   // 64 hex characters + null terminator
 
 
 // Special character set for password validation

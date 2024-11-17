@@ -101,15 +101,16 @@ bool isValidPassword(_In_reads_ (passwordLength) const char* password, _In_ uint
  * @param       hashedPassword  A buffer to store the resulting hashed password (must be HASH_LENGTH bytes).
  * @return      TRUE if the hashing succeeds; otherwise, FALSE.
  */
-bool HashPassword(_In_reads_bytes_(passwordLength) const char* password, _In_ uint16_t passwordLength, _Out_writes_bytes_all_(HASH_LENGTH) char* hashedPassword) {
+bool HashPassword(_In_reads_bytes_(passwordLength) const char* password, _In_ uint16_t passwordLength, _Out_writes_bytes_all_(HASH_HEX_LENGTH) char* hashedPassword) {
     BCRYPT_ALG_HANDLE hAlg = NULL;
     BCRYPT_HASH_HANDLE hHash = NULL;
+    BYTE binaryHash[HASH_LENGTH] = { 0 };
     DWORD hashLength = HASH_LENGTH;
     NTSTATUS status;
     bool result = false;
 
     // Clear the output buffer to avoid uninitialized usage
-    memset(hashedPassword, 0, HASH_LENGTH);
+    memset(hashedPassword, 0, HASH_HEX_LENGTH);
 
     // Open an algorithm handle
     status = BCryptOpenAlgorithmProvider(&hAlg, BCRYPT_SHA256_ALGORITHM, NULL, 0);
@@ -129,10 +130,15 @@ bool HashPassword(_In_reads_bytes_(passwordLength) const char* password, _In_ ui
         goto cleanup;
     }
 
-    // Get the hash
-    status = BCryptFinishHash(hHash, (PUCHAR)hashedPassword, hashLength, 0);
+    // Get the binary hash
+    status = BCryptFinishHash(hHash, binaryHash, hashLength, 0);
     if (!BCRYPT_SUCCESS(status)) {
         goto cleanup;
+    }
+
+    // Convert the binary hash to a hex string
+    for (DWORD i = 0; i < hashLength; i++) {
+        sprintf_s(&hashedPassword[i * 2], 3, "%02x", binaryHash[i]);
     }
 
     result = true;
@@ -320,6 +326,68 @@ bool IsUserLoggedIn(void) {
 }
 
 
+bool RetrieveUserCredentials(_In_ const char* Username, _Out_writes_z_(HASH_LENGTH * 2 + 1) char* OutHashedPassword) {
+    char appDir[MAX_PATH];
+    if (GetCurrentDirectoryA(MAX_PATH, appDir) == 0) {
+        printf("Failed to get current directory\n");
+        OutHashedPassword[0] = '\0'; // Ensure it's always null-terminated
+        return false;
+    }
+
+    // Construct the path to users.txt
+    char filePath[MAX_PATH];
+    if (sprintf_s(filePath, MAX_PATH, "%s\\users.txt", appDir) < 0) {
+        printf("Failed to construct file path\n");
+        OutHashedPassword[0] = '\0'; // Ensure it's always null-terminated
+        return false;
+    }
+
+    FILE* file = fopen(filePath, "r");
+    if (file == NULL) {
+        printf("Failed to open users.txt\n");
+        OutHashedPassword[0] = '\0'; // Ensure it's always null-terminated
+        return false;
+    }
+
+    // Increase buffer size to accommodate 64 characters of hash + 1 for null terminator
+    char line[USERNAME_MAX_LENGTH + HASH_LENGTH * 2 + 2]; // 2 extra for ':' and '\0'
+    char storedUsername[USERNAME_MAX_LENGTH + 1] = { 0 };
+    char storedHashedPassword[HASH_LENGTH * 2 + 1] = { 0 }; // 64 hex chars + 1 null terminator
+
+    // Initialize output to ensure it's valid
+    OutHashedPassword[0] = '\0';
+
+    // Read each line and parse for username and hash
+    while (fgets(line, sizeof(line), file) != NULL) {
+        // Remove any trailing newline character
+        line[strcspn(line, "\r\n")] = '\0';
+
+        // Parse line as "username:hashed_password"
+        if (sscanf_s(line, "%10[^:]:%64s", storedUsername, (unsigned)_countof(storedUsername), storedHashedPassword, (unsigned)_countof(storedHashedPassword)) == 2) {
+            if (strcmp(Username, storedUsername) == 0) {
+                // Safely copy the hashed password
+                strncpy_s(OutHashedPassword, HASH_LENGTH * 2 + 1, storedHashedPassword, HASH_LENGTH * 2);
+
+                // Ensure null termination
+                OutHashedPassword[HASH_LENGTH * 2] = '\0';
+
+                fclose(file);
+                return true;
+            }
+        }
+        else {
+            printf("Line parsing failed or incorrect format: %s\n", line);
+        }
+    }
+
+    fclose(file);
+    printf("User not found\n");
+    return false;  // User not found
+}
+
+
+
+
 NTSTATUS WINAPI
 SafeStorageHandleLogin(
     const char* Username,
@@ -346,18 +414,21 @@ SafeStorageHandleLogin(
     }
 
     // Hash the provided password to compare with the stored hash
-    char hashedPassword[HASH_LENGTH];
+    char hashedPassword[HASH_LENGTH * 2 + 1] = { 0 };
     if (!HashPassword(Password, PasswordLength, hashedPassword)) {
         printf("Failed to hash password\n");
         return SS_STATUS_HASH_FAILED;
     }
 
     // Retrieve stored hashed password for the username
-    char storedHashedPassword[HASH_LENGTH];
+    char storedHashedPassword[HASH_LENGTH * 2 + 1] = { 0 };
     if (!RetrieveUserCredentials(Username, storedHashedPassword)) {
         printf("User not found\n");
         return SS_STATUS_USER_NOT_FOUND;
     }
+
+    printf("Input hash: %s\nStored hash: %s\n", hashedPassword, storedHashedPassword);
+
 
     // Compare the hashed passwords
     if (strcmp(hashedPassword, storedHashedPassword) != 0) {
