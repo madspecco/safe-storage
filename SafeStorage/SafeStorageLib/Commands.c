@@ -7,9 +7,26 @@
 // Global static variables
 static bool g_IsUserLoggedIn = false;
 static char g_LoggedInUsername[USERNAME_MAX_LENGTH + 1] = { 0 };
+static char g_AppDirectory[MAX_PATH] = { 0 };
+
 
 
 // Function declarations
+/**
+ * @brief Initializes the global application directory variable.
+ *
+ * @return TRUE if initialization is successful; otherwise, FALSE.
+ */
+bool InitializeAppDirectory() {
+    // Get the current directory
+    if (GetCurrentDirectoryA(MAX_PATH, g_AppDirectory) == 0) {
+        printf("Error initializing application directory: %s\n", strerror(errno));
+        return false;
+    }
+    return true;
+}
+
+
 /**
  * @brief       Converts a binary hash to a hexadecimal string.
  *
@@ -165,12 +182,9 @@ cleanup:
  * @return      TRUE if the credentials are stored successfully; otherwise, FALSE.
  */
 bool StoreUserCredentials(_In_z_ const char* username, _In_reads_bytes_(HASH_HEX_LENGTH) const char* hashedPassword) {
-    char AppDir[MAX_PATH];
-    GetCurrentDirectoryA(MAX_PATH, AppDir);
-
     // Construct the path to the users.txt file
     char usersFilePath[MAX_PATH];
-    sprintf_s(usersFilePath, MAX_PATH, "%s\\users.txt", AppDir);
+    sprintf_s(usersFilePath, MAX_PATH, "%s\\users.txt", g_AppDirectory);
 
     // Open users.txt for appending
     FILE* file = fopen(usersFilePath, "a");
@@ -193,12 +207,9 @@ bool StoreUserCredentials(_In_z_ const char* username, _In_reads_bytes_(HASH_HEX
  * @return      TRUE if the user is already registerd; otherwise, FALSE.
  */
 bool UserAlreadyRegistered(_In_ const char* username) {
-    char AppDir[MAX_PATH];
-    GetCurrentDirectoryA(MAX_PATH, AppDir);
-
     // Construct the path to the users.txt file.
     char usersFilePath[MAX_PATH];
-    sprintf_s(usersFilePath, MAX_PATH, "%s\\users.txt", AppDir);
+    sprintf_s(usersFilePath, MAX_PATH, "%s\\users.txt", g_AppDirectory);
 
     // Open users.txt file for reading.
     FILE* file = fopen(usersFilePath, "r");
@@ -233,6 +244,12 @@ SafeStorageInit(
     /* Here you can create any global objects you consider necessary. */
     g_IsUserLoggedIn = false;   // Initialize the variable
     memset(g_LoggedInUsername, 0, sizeof(g_LoggedInUsername));  // Clear the username
+
+    /* Initialize the global application directory */
+    if (GetCurrentDirectoryA(MAX_PATH, g_AppDirectory) == 0) {
+        printf("Failed to initialize the application directory.\n");
+        return STATUS_UNSUCCESSFUL;
+    }
     return STATUS_SUCCESS;
 }
 
@@ -257,9 +274,6 @@ SafeStorageHandleRegister(
     uint16_t PasswordLength
 )
 {
-    char AppDir[MAX_PATH];
-    GetCurrentDirectoryA(MAX_PATH, AppDir);
-
     // Validate username
     if (!isValidUsername(Username, UsernameLength)) {
         printf("Invalid Username\n");
@@ -280,11 +294,11 @@ SafeStorageHandleRegister(
 
     // Create user directory
     char userDirectory[MAX_PATH];
-    sprintf(userDirectory, "%s\\users\\%s", AppDir, Username);
+    sprintf(userDirectory, "%s\\users\\%s", g_AppDirectory, Username);
 
     // Check if parent directory exists
     char usersDir[MAX_PATH];
-    sprintf(usersDir, "%s\\users", AppDir);
+    sprintf(usersDir, "%s\\users", g_AppDirectory);
     if (!CreateDirectoryA(usersDir, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
         printf("Error creating users directory: %s\n", strerror(errno));
         return SS_STATUS_MEMORY_ALLOCATION_FAILED;
@@ -323,16 +337,9 @@ bool IsUserLoggedIn(void) {
 
 
 bool RetrieveUserCredentials(_In_ const char* Username, _Out_writes_z_(HASH_LENGTH * 2 + 1) char* OutHashedPassword) {
-    char appDir[MAX_PATH];
-    if (GetCurrentDirectoryA(MAX_PATH, appDir) == 0) {
-        printf("Failed to get current directory\n");
-        OutHashedPassword[0] = '\0'; // Ensure it's always null-terminated
-        return false;
-    }
-
     // Construct the path to users.txt
     char filePath[MAX_PATH];
-    if (sprintf_s(filePath, MAX_PATH, "%s\\users.txt", appDir) < 0) {
+    if (sprintf_s(filePath, MAX_PATH, "%s\\users.txt", g_AppDirectory) < 0) {
         printf("Failed to construct file path\n");
         OutHashedPassword[0] = '\0'; // Ensure it's always null-terminated
         return false;
@@ -473,6 +480,25 @@ SafeStorageHandleStore(
     uint16_t SourceFilePathLength
 )
 {
+    // Check if a user is logged in
+    if (!g_IsUserLoggedIn) {
+        printf("No user is logged in.\n");
+        return SS_STATUS_NOT_LOGGED_IN;
+    }
+
+    // Validate SubmissionName
+    if (SubmissionName == NULL || SubmissionNameLength == 0 || SubmissionNameLength > MAX_SUBMISSION_NAME_LENGTH) {
+        printf("Invalid submission name.\n");
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    // Validate SourceFilePath
+    if (SourceFilePath == NULL || SourceFilePathLength == 0 || SourceFilePathLength > MAX_FILE_PATH_LENGTH) {
+        printf("Invalid source file path.\n");
+        return STATUS_INVALID_PARAMETER;
+    }
+
+
     /* The function is not implemented. It is your responsibility. */
     /* After you implement the function, you can remove UNREFERENCED_PARAMETER(x). */
     /* This is just to prevent a compilation warning that the parameter is unused. */

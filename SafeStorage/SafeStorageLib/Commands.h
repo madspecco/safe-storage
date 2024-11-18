@@ -30,6 +30,10 @@ typedef enum {
 #define PASSWORD_MIN_LENGTH 5
 #define HASH_LENGTH 32                          // 256 bits / 8 bits per byte
 #define HASH_HEX_LENGTH (HASH_LENGTH * 2 + 1)   // 64 hex characters + null terminator
+#define MAX_FILE_SIZE 8589934592LL              // 8 GB
+#define CHUNK_SIZE 65536                        // 64 KB (adjust as needed)
+#define MAX_SUBMISSION_NAME_LENGTH 255
+#define MAX_FILE_PATH_LENGTH 260
 
 
 // Special character set for password validation
