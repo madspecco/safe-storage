@@ -498,17 +498,55 @@ SafeStorageHandleStore(
         return STATUS_INVALID_PARAMETER;
     }
 
+    // Construct the destination path for the submission
+    char destinationPath[MAX_PATH];
+    int result = snprintf(
+        destinationPath,
+        sizeof(destinationPath),
+        "%s\\users\\%s\\%.*s",
+        g_AppDirectory,
+        g_LoggedInUsername,
+        SubmissionNameLength,
+        SubmissionName
+    );
 
-    /* The function is not implemented. It is your responsibility. */
-    /* After you implement the function, you can remove UNREFERENCED_PARAMETER(x). */
-    /* This is just to prevent a compilation warning that the parameter is unused. */
+    // Check for truncation or formatting errors
+    if (result < 0 || result >= (int)sizeof(destinationPath)) {
+        printf("Failed to construct the destination path.\n");
+        return STATUS_BUFFER_OVERFLOW;
+    }
 
-    UNREFERENCED_PARAMETER(SubmissionName);
-    UNREFERENCED_PARAMETER(SubmissionNameLength);
-    UNREFERENCED_PARAMETER(SourceFilePath);
-    UNREFERENCED_PARAMETER(SourceFilePathLength);
 
-    return STATUS_NOT_IMPLEMENTED;
+    // Ensure the user's directory exists
+    if (CreateDirectoryA(destinationPath, NULL) == 0 && GetLastError() != ERROR_ALREADY_EXISTS) {
+        printf("Failed to create the directory for the submission: %lu\n", GetLastError());
+        return STATUS_UNSUCCESSFUL;
+    }
+
+    SetWritePermissions(destinationPath);
+    //Copy the source file to the destination
+    printf("Copying %s", SourceFilePath);
+    printf("To Destination: %s", destinationPath);
+    if (!CopyFileA(SourceFilePath, destinationPath, FALSE)) {
+        printf("Failed to copy the file to the destination: %lu\n", GetLastError());
+        return STATUS_UNSUCCESSFUL;
+    }
+
+
+    printf("File successfully stored at: %s\n", destinationPath);
+    return STATUS_SUCCESS;
+
+
+    ///* The function is not implemented. It is your responsibility. */
+    ///* After you implement the function, you can remove UNREFERENCED_PARAMETER(x). */
+    ///* This is just to prevent a compilation warning that the parameter is unused. */
+
+    //UNREFERENCED_PARAMETER(SubmissionName);
+    //UNREFERENCED_PARAMETER(SubmissionNameLength);
+    //UNREFERENCED_PARAMETER(SourceFilePath);
+    //UNREFERENCED_PARAMETER(SourceFilePathLength);
+
+    //return STATUS_NOT_IMPLEMENTED;
 }
 
 
