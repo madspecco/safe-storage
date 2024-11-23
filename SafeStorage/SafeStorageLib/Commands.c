@@ -2,6 +2,8 @@
 #include <stdbool.h>
 #include <strsafe.h>
 #include <errno.h>
+#include <windows.h>
+#include <AclAPI.h>
 
 
 // Global static variables
@@ -26,6 +28,17 @@ bool InitializeAppDirectory() {
     return true;
 }
 
+
+/**
+ * @brief Extracts the filename from a full file path.
+ *
+ * @param filePath The full file path.
+ * @return A pointer to the filename within the file path.
+ */
+const char* ExtractFileName(const char* filePath) {
+    const char* lastSlash = strrchr(filePath, '\\'); // Look for the last backslash
+    return (lastSlash != NULL) ? lastSlash + 1 : filePath; // Return the part after the slash
+}
 
 /**
  * @brief       Converts a binary hash to a hexadecimal string.
@@ -472,6 +485,65 @@ SafeStorageHandleLogout(
 }
 
 
+void SetWritePermissions(LPCSTR filePath) {
+    DWORD result;
+    PACL pOldDACL = NULL;
+    PSECURITY_DESCRIPTOR pSD = NULL;
+    EXPLICIT_ACCESSA ea;
+
+    // Get current security descriptor
+    result = GetNamedSecurityInfoA(
+        filePath,
+        SE_FILE_OBJECT,
+        DACL_SECURITY_INFORMATION,
+        NULL,
+        NULL,
+        &pOldDACL,
+        NULL,
+        &pSD
+    );
+
+    if (result != ERROR_SUCCESS) {
+        printf("Failed to get security info: %lu\n", result);
+        return;
+    }
+
+    // Initialize EXPLICIT_ACCESS structure
+    ZeroMemory(&ea, sizeof(EXPLICIT_ACCESSA));
+    ea.grfAccessPermissions = FILE_GENERIC_WRITE;
+    ea.grfAccessMode = GRANT_ACCESS;
+    ea.grfInheritance = SUB_CONTAINERS_AND_OBJECTS_INHERIT;
+    ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
+    ea.Trustee.TrusteeType = TRUSTEE_IS_USER;
+    ea.Trustee.ptstrName = "CURRENT_USER";
+
+    // Set new DACL
+    PACL pNewDACL = NULL;
+    result = SetEntriesInAclA(1, &ea, pOldDACL, &pNewDACL);
+    if (result == ERROR_SUCCESS) {
+        result = SetNamedSecurityInfoA(
+            (LPSTR)filePath,
+            SE_FILE_OBJECT,
+            DACL_SECURITY_INFORMATION,
+            NULL,
+            NULL,
+            pNewDACL,
+            NULL
+        );
+
+        if (result != ERROR_SUCCESS) {
+            printf("Failed to set security info: %lu\n", result);
+        }
+    }
+    else {
+        printf("Failed to modify DACL: %lu\n", result);
+    }
+
+    if (pSD) LocalFree((HLOCAL)pSD);
+    if (pNewDACL) LocalFree((HLOCAL)pNewDACL);
+}
+
+
 NTSTATUS WINAPI
 SafeStorageHandleStore(
     const char* SubmissionName,
@@ -523,11 +595,20 @@ SafeStorageHandleStore(
         return STATUS_UNSUCCESSFUL;
     }
 
-    SetWritePermissions(destinationPath);
+
     //Copy the source file to the destination
-    printf("Copying %s", SourceFilePath);
-    printf("To Destination: %s", destinationPath);
-    if (!CopyFileA(SourceFilePath, destinationPath, FALSE)) {
+    const char* sourceFileName = ExtractFileName(SourceFilePath);
+
+    // Buffer to hold the final destination path
+    char fullDestinationPath[MAX_PATH];
+
+    // Safely construct the full destination path
+    if (FAILED(StringCchPrintfA(fullDestinationPath, MAX_PATH, "%s\\%s", destinationPath, sourceFileName))) {
+        printf("Failed to construct the full destination path.\n");
+        return STATUS_UNSUCCESSFUL;
+    }
+
+    if (!CopyFileA(SourceFilePath, fullDestinationPath, FALSE)) {
         printf("Failed to copy the file to the destination: %lu\n", GetLastError());
         return STATUS_UNSUCCESSFUL;
     }
